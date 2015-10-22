@@ -1,3 +1,3 @@
 # omeka-plugin-LinkExternalData
-Omeka Plugin to get data from another URL. Usefull after an OAI-PMH repository import to display thumbnails and link to remote digital object.
+Omeka Plugin to connect a collection to an URL that gives access to digital data.
 First used to display images from Internet Archive.
