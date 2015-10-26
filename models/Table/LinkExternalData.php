@@ -1,16 +1,12 @@
 <?php
 /**
- * Collection Tree
+ * LinkExternalData plugin
  * 
- * @copyright Copyright 2007-2012 Roy Rosenzweig Center for History and New Media
+ * @copyright Copyright 2015 Sciences Po
  * @license http://www.gnu.org/licenses/gpl-3.0.txt GNU GPLv3
- */
-
-/**
- * The link_external_data table.
- * 
  * @package Omeka\Plugins\LinkExternalData
  */
+
 class Table_LinkExternalData extends Omeka_Db_Table
 {
     /**
@@ -29,7 +25,6 @@ class Table_LinkExternalData extends Omeka_Db_Table
      */
     protected $_cache = array();
 
-   
     /**
      * Find by collection ID.
      *
@@ -39,16 +34,13 @@ class Table_LinkExternalData extends Omeka_Db_Table
     public function findByCollectionId($collectionId)
     {
         $db = $this->getDb();
-
         $sql = "
         SELECT *
         FROM {$db->LinkExternalData}
         WHERE collection_id = ?";
-
         // Child collection IDs are unique, so only fetch one row.
         return $this->fetchObject($sql, array($collectionId));
     }
-
 
     /**
      * Cache collection data.
@@ -61,19 +53,16 @@ class Table_LinkExternalData extends Omeka_Db_Table
         FROM {$db->Collection} c
         LEFT JOIN {$db->LinkExternalData} ct
         ON c.id = ct.collection_id";
-
-        // check whether the acl exists -- it doesn't within a background process
+        // Check whether the acl exists -- it doesn't within a background process
         $acl = get_acl();
         // Cache only those collections to which the current user has access.
         if ($acl && ! $acl->isAllowed(current_user(), 'Collections', 'showNotPublic')) {
             $sql .= ' WHERE c.public = 1';
         }
-
         // Order alphabetically if configured to do so.
         if (get_option('link_external_data_alpha_order')) {
             $sql .= ' ORDER BY ct.name';
         }
-
         $this->_collections = $db->fetchAll($sql);
     }
 
@@ -89,7 +78,6 @@ class Table_LinkExternalData extends Omeka_Db_Table
         if (!$this->_collections) {
             $this->cacheCollections();
         }
-
         foreach ($this->_collections as $collection) {
             if ($collectionId == $collection['id']) {
                 return $collection;
@@ -98,7 +86,6 @@ class Table_LinkExternalData extends Omeka_Db_Table
         return false;
     }
 
-   
     /**
      * Reset the cache property.
      */

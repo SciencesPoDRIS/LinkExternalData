@@ -1,16 +1,12 @@
 <?php
 /**
- * Collection Tree
+ * LinkExternalData plugin
  * 
- * @copyright Copyright 2007-2012 Roy Rosenzweig Center for History and New Media
+ * @copyright Copyright 2015 Sciences Po
  * @license http://www.gnu.org/licenses/gpl-3.0.txt GNU GPLv3
- */
-
-/**
- * The Link External Data controller.
- * 
  * @package Omeka\Plugins\LinkExternalData
  */
+
 class LinkExternalData_IndexController extends Omeka_Controller_AbstractActionController
 {
     public function indexAction()
