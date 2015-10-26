@@ -16,6 +16,8 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
     protected $_hooks = array(
         'install',
         'uninstall',        
+        'initialize',   
+        'upgrade',            
         'admin_collections_show',               
         'admin_collections_form',
         'before_save_collection',
@@ -33,23 +35,29 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
     {
         //-------------- create a table ---------------------
         $sql  = "
-        CREATE TABLE IF NOT EXISTS `{$this->_db->CollectionRemoteData}` (
-          `hasRemoteData` BOOLEAN,
-          'urlRemoteData`   varchar(50),
+        CREATE TABLE IF NOT EXISTS `{$this->_db->LinkExternalData}` (
+          `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+          `collection_id` int(10) unsigned NOT NULL,
+          `name` text COLLATE utf8_unicode_ci,
+          `hasExternalData` BOOLEAN,
+          `urlExternalData` text COLLATE utf8_unicode_ci,      
           PRIMARY KEY (`id`),
+          UNIQUE KEY `collection_id` (`collection_id`)
         ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;";
-        $this->_db->query($sql);
-        
+
+        $this->_db->query($sql);   
         
         // Save all collections in the collection_trees table.
         $collectionTable = $this->_db->getTable('Collection');
         $collections = $this->_db->fetchAll("SELECT id FROM {$this->_db->Collection}");
         foreach ($collections as $collection) {
             $collectionObj = $collectionTable->find($collection['id']);
-            $collectionTree = new CollectionTree;
-            $collectionTree->hasRemoteData = FALSE;
-            $collectionTree->urlRemoteData = '';
-            $collectionTree->save();
+            $linkExternalData = new LinkExternalData();
+            $linkExternalData->collection_id = $collection['id'];           
+            $linkExternalData->hasExternalData = FALSE;
+            $linkExternalData->urlExternalData = '';
+            $linkExternalData->name = metadata($collectionObj, array('Dublin Core', 'Title'));            
+            $linkExternalData->save();
         }
     }
     
@@ -58,11 +66,58 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
      */
     public function hookUninstall()
     {
-        $sql = "DROP TABLE IF EXISTS {$this->_db->CollectionRemoteData}";
+        $sql = "DROP TABLE IF EXISTS {$this->_db->LinkExternalData}";
         $this->_db->query($sql);
         
     }
     
+    /**
+     * Initialize the plugin.
+     */
+    public function hookInitialize()
+    {
+        // Add translation.
+        add_translation_source(dirname(__FILE__) . '/languages');
+    }
+
+
+  /**
+     * Upgrade from earlier versions.
+     */
+    public function hookUpgrade($args)
+    {
+        // Prior to Omeka 2.0, collection names were stored in the collections 
+        // table; now they are stored as Dublin Core Title. This upgrade 
+        // compensates for this by moving the collection names to the 
+        // collection_trees table.
+        if (version_compare($args['old_version'], '2.0', '<')) {
+            
+            // Add the name column to the collection_trees table.
+            $sql = "ALTER TABLE {$this->_db->LinkExternalData} ADD `name` TEXT NULL";
+            $this->_db->query($sql);
+            
+            // Assign names to their corresponding collection_tree rows.
+            $collectionTreeTable = $this->_db->getTable('CollectionTree');
+            $collectionTable = $this->_db->getTable('Collection');
+            $collections = $this->_db->fetchAll("SELECT id FROM {$this->_db->Collection}");
+            foreach ($collections as $collection) {
+                $collectionTree = $collectionTreeTable->findByCollectionId($collection['id']);
+                if (!$collectionTree) {
+                    $collectionTree = new CollectionTree;
+                    $collectionTree->collection_id = $collection['id'];
+                    $collectionTree->parent_collection_id = 0;
+                }
+                $collectionObj = $collectionTable->find($collection['id']);
+                $collectionTree->name = metadata($collectionObj, array('Dublin Core', 'Title'));
+                $collectionTree->save();
+            }
+        }
+    }
+
+
+
+
+
 
 
     public function hookAdminCollectionsForm($args)
