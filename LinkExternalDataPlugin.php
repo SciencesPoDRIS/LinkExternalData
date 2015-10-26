@@ -16,8 +16,6 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
     protected $_hooks = array(
         'install',
         'uninstall',        
-        'initialize',   
-        'upgrade',            
         'admin_collections_show',               
         'admin_collections_form',
         'before_save_collection',
@@ -61,9 +59,7 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         }
     }
     
-    /**
-     * Uninstall the plugin.
-     */
+    /****************Uninstall the plugin**************************************/
     public function hookUninstall()
     {
         $sql = "DROP TABLE IF EXISTS {$this->_db->LinkExternalData}";
@@ -71,118 +67,127 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         
     }
     
-    /**
-     * Initialize the plugin.
-     */
-    public function hookInitialize()
-    {
-        // Add translation.
-        add_translation_source(dirname(__FILE__) . '/languages');
-    }
-
-
-  /**
-     * Upgrade from earlier versions.
-     */
-    public function hookUpgrade($args)
-    {
-        // Prior to Omeka 2.0, collection names were stored in the collections 
-        // table; now they are stored as Dublin Core Title. This upgrade 
-        // compensates for this by moving the collection names to the 
-        // collection_trees table.
-        if (version_compare($args['old_version'], '2.0', '<')) {
-            
-            // Add the name column to the collection_trees table.
-            $sql = "ALTER TABLE {$this->_db->LinkExternalData} ADD `name` TEXT NULL";
-            $this->_db->query($sql);
-            
-            // Assign names to their corresponding collection_tree rows.
-            $collectionTreeTable = $this->_db->getTable('CollectionTree');
-            $collectionTable = $this->_db->getTable('Collection');
-            $collections = $this->_db->fetchAll("SELECT id FROM {$this->_db->Collection}");
-            foreach ($collections as $collection) {
-                $collectionTree = $collectionTreeTable->findByCollectionId($collection['id']);
-                if (!$collectionTree) {
-                    $collectionTree = new CollectionTree;
-                    $collectionTree->collection_id = $collection['id'];
-                    $collectionTree->parent_collection_id = 0;
-                }
-                $collectionObj = $collectionTable->find($collection['id']);
-                $collectionTree->name = metadata($collectionObj, array('Dublin Core', 'Title'));
-                $collectionTree->save();
-            }
-        }
-    }
-
-
-
-
-
-
-
     public function hookAdminCollectionsForm($args)
     {
+
+        $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['collection']->id);
+        if ($linkExternalData->hasExternalData==true){
+            $centrImpor='checked';
+            $centrLocal='';
+        }
+        else{
+            $centrLocal='checked';
+            $centrImpor='';
+        }
+
         echo '<div id="chemin_image">';
             echo '<fieldset class="set"><h2>Collection Importée</h2></fieldset>';
         echo'</div>';
 
         echo '<div class="field">';
-            echo '<div class="two columns alpha"><label for="per_page">Collection Importée ?</label></div>';
+            echo '<div class="two columns alpha"><label for="per_page">Type de collection</label></div>';
             echo '<div class="inputs five columns omega">';
-                echo '<div class="input-block">';
+            echo '<div class="input-block">';
+            $startLocal='<p><input type= "radio" name="hasExternalData" value="false"';
+            $startImpor='<p><input type= "radio" name="hasExternalData" value="true"';
+            $endLocal  ='> Collection Locale (valeur par défaut)</p>';
+            $endImpor  ='> Collection Importée </p>';          
+            echo $startLocal.$centrLocal.$endLocal;
+            echo $startImpor.$centrImpor.$endImpor;
+        echo'</div></div>';
 
-                    $start='<p><input type= "radio" name="origine_collection" value="local"';
-                    $end  ='> Collection Locale (valeur par défaut)</p>';
-                    $centr1=get_option('origine_collection')=="local" ? 'checked' :'';
-                    $centr2=get_option('origine_collection')=="imported" ? 'checked' :'';
+        echo '<div class="field">';
 
-
-                    echo $start.$centr1.$end;
-                    echo $start.$centr2.$end;
-
-                    echo '<input type="text" class="textinput" size="45" name="chemin_image_http" value="'.get_option('chemin_image_http').'" id="chemin_image_http" />';
-
+            echo '<div class="two columns alpha"><label for="per_page">URL si collection importée</label></div>';
+            
+            echo '<input type="text" class="textinput" size="45" name="urlExternalData" value="'.$linkExternalData->urlExternalData.'" id="urlExternalData" />';
                 
             echo '</div>';            
-        echo '</div>';
-
-      
+        echo '</div>';     
     }
 
 
     public function hookAdminCollectionsShow($args)
     {
-                echo '<p><b> Origine Collection</b> : '.get_option('origine_collection').'</p>';
-                echo '<p><b> Chemin Image</b> : '.get_option('chemin_image_http').'</p>';
+        $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['collection']->id);
 
-                echo '<p><b> Collection numéro</b> : '.$args['collection']->id.'</p>';
-
-                $args['collection']->origine_collection=get_option('origine_collection');       
-
-                print_r($args['collection']);
+        echo '<p><b> Numéro de la collection</b> : '.$linkExternalData->collection_id.'</p>';
+        echo '<p><b> Nom de la collection</b> : '.$linkExternalData->name.'</p>';
+        echo '<p><b> Collection avec données externes</b> : '.$linkExternalData->hasExternalData.'</p>';
+        echo '<p><b> URL des données externes</b> : '.$linkExternalData->urlExternalData.'</p>';
                 
-
     }
-
 
     public function hookBeforeSaveCollection($args)
     {
 
-        $collection_id=$args['collection']->id;
-
-        set_option('chemin_image_http',trim($_POST['chemin_image_http']));
-        set_option('origine_collection',trim($_POST['origine_collection']));
-      //  $args['collection']->origine_collection=get_option('origine_collection');       
-
-    }
-
-
-
-      public function hookAfterSaveCollection($args)
-    {
+        $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['record']->id);
+        if (!$linkExternalData) {
+            return;
+        }
         
-      //  $args['collection']->origine_collection=get_option('origine_collection');       
+        // Only validate the relationship during a form submission.
+        if (isset($args['post']['urlExternalData'])) {
+            $linkExternalData->urlExternalData = $args['post']['urlExternalData'];
+            if (!$linkExternalData->isValid()) {
+                $args['record']->addErrorsFrom($linkExternalData);
+            }
+        }
+
+        // Only validate the relationship during a form submission.
+        if (isset($args['post']['hasExternalData'])) {
+            $linkExternalData->hasExternalData = $args['post']['hasExternalData'];
+            if (!$linkExternalData->isValid()) {
+                $args['record']->addErrorsFrom($linkExternalData);
+            }
+        }
+
 
     }
 
+    public function hookAfterSaveCollection($args){
+
+
+        set_option('urlExternalData',trim($_POST['urlExternalData']));
+
+        //Radio button has been set to "true"
+        if(isset($_POST['hasExternalData']) && $_POST['hasExternalData'] == 'true') 
+            $_POST['hasExternalData'] = true;
+            //Radio button has been set to "false" or a value was not selected
+        else 
+            $_POST['hasExternalData'] = false;
+
+        set_option('hasExternalData',$_POST['hasExternalData']);
+
+
+
+
+
+        $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['record']->id);
+        $linkExternalData->collection_id=$args['record']->id;
+        $linkExternalData->name = metadata($args['record'], array('Dublin Core', 'Title'));
+        $linkExternalData->hasExternalData=get_option('hasExternalData');
+        $linkExternalData->urlExternalData=get_option('urlExternalData');
+
+        $linkExternalData->save();
+
+    }
+
+
+
+
+
+    /**
+     * Handle collection deletions.
+     */
+    public function hookAfterDeleteCollection($args)
+    {
+        $linkExternalDataTable = $this->_db->getTable('LinkExternalData');
+        
+        // Delete the relationship with the parent collection.
+        $linkExternalData = $linkExternalDataTable->findByCollectionId($args['collection']->id);
+        if ($linkExternalData) {
+            $linkExternalData->delete();
+        }        
+    }
 }
