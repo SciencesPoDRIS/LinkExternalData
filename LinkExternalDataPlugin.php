@@ -15,9 +15,10 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         'admin_collections_show',
         'admin_collections_form',
         'before_save_collection',
-        'after_save_collection'
+        'after_save_collection',
+        'public_items_show'
      );
-
+    
     /**
      * Install the plugin.
      *
@@ -59,10 +60,14 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         $this->_db->query($sql);
     }
 
+    /****************Form when editing or creating a collection**************************************/
     public function hookAdminCollectionsForm($args)
     {
         $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['collection']->id);
-        if ($linkExternalData->hasExternalData == true) {
+        if (!$linkExternalData) {
+            $centrLocal = 'checked';
+            $centrImpor = '';
+        } else if ($linkExternalData->hasExternalData == true) {
             $centrImpor = 'checked';
             $centrLocal = '';
         } else {
@@ -88,48 +93,40 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
 
         echo '<div class="field">';
             echo '<div class="two columns alpha"><label for="per_page">URL si collection importée</label></div>';
-            echo '<input type="text" class="textinput" size="45" name="urlExternalData" value="' . $linkExternalData->urlExternalData . '" id="urlExternalData" />';
-            echo '</div>';
-        echo '</div>';
+
+            $default_url = (!$linkExternalData || strlen($linkExternalData->urlExternalData) == 0) ? 'http://archive.org' : $linkExternalData->urlExternalData;
+            
+            echo '<input type="text" class="textinput" size="45" name="urlExternalData" value="' . $default_url . '" id="urlExternalData" />';
+                
+            echo '</div>';            
+        echo '</div>';     
     }
 
 
+    /****************When showing collection / Appends at the end of the page (after items)*******************************/
     public function hookAdminCollectionsShow($args)
     {
+
+        $collection_id=$args['collection']->id;
+        if ($collection_id<=0)
+            return;
+
         $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['collection']->id);
-        echo '<p><b> Numéro de la collection</b> : ' . $linkExternalData->collection_id . '</p>';
-        echo '<p><b> Nom de la collection</b> : ' . $linkExternalData->name . '</p>';
+
+        if (!$linkExternalData)
+            return;
+
+        //echo '<p><b> Numéro de la collection</b> : '.$linkExternalData->collection_id.'</p>';
+        //echo '<p><b> Nom de la collection</b> : '.$linkExternalData->name.'</p>';
         echo '<p><b> Collection avec données externes</b> : ' . $linkExternalData->hasExternalData . '</p>';
         echo '<p><b> URL des données externes</b> : ' . $linkExternalData->urlExternalData . '</p>';
+                
     }
 
+    /****************Before collection is saved / stored (! collection may not exist)*******************************/
     public function hookBeforeSaveCollection($args)
     {
-        $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['record']->id);
-        if (!$linkExternalData) {
-            return;
-        }
-
-        // Only validate the relationship during a form submission.
-        if (isset($args['post']['urlExternalData'])) {
-            $linkExternalData->urlExternalData = $args['post']['urlExternalData'];
-            if (!$linkExternalData->isValid()) {
-                $args['record']->addErrorsFrom($linkExternalData);
-            }
-        }
-
-        // Only validate the relationship during a form submission.
-        if (isset($args['post']['hasExternalData'])) {
-            $linkExternalData->hasExternalData = $args['post']['hasExternalData'];
-            if (!$linkExternalData->isValid()) {
-                $args['record']->addErrorsFrom($linkExternalData);
-            }
-        }
-    }
-
-    public function hookAfterSaveCollection($args){
         set_option('urlExternalData', trim($_POST['urlExternalData']));
-
         // Radio button has been set to "true"
         if(isset($_POST['hasExternalData']) && $_POST['hasExternalData'] == 'true') {
             $_POST['hasExternalData'] = true;
@@ -137,7 +134,31 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         } else {
             $_POST['hasExternalData'] = false;
         }
-        set_option('hasExternalData',$_POST['hasExternalData']);
+        set_option('hasExternalData', $_POST['hasExternalData']);
+    }
+
+    public function hookAfterSaveCollection($args)
+    {
+        $collection_id = $args['record']->id;
+        $collectionTable = $this->_db->getTable('Collection');
+
+        if ($collection_id <= 0 || !$collectionTable) {
+            return;
+        }
+
+        $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($collection_id);
+
+        if ($collectionTable) {
+            if (!$linkExternalData) {
+                $collectionObj = $collectionTable->find($collection_id);
+                $linkExternalData = new LinkExternalData();
+                $linkExternalData->collection_id = $collection_id;           
+                $linkExternalData->hasExternalData = FALSE;
+                $linkExternalData->urlExternalData = '';
+                $linkExternalData->name = metadata($collectionObj, array('Dublin Core', 'Title'));            
+                $linkExternalData->save();
+            }
+        }
         $linkExternalData = $this->_db->getTable('LinkExternalData')->findByCollectionId($args['record']->id);
         $linkExternalData->collection_id = $args['record']->id;
         $linkExternalData->name = metadata($args['record'], array('Dublin Core', 'Title'));
@@ -152,10 +173,21 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
     public function hookAfterDeleteCollection($args)
     {
         $linkExternalDataTable = $this->_db->getTable('LinkExternalData');
-        // Delete the relationship with the parent collection
+        if (!$linkExternalDataTable) {
+            return;
+        }
+        // Delete the relationship with the parent collection.
         $linkExternalData = $linkExternalDataTable->findByCollectionId($args['collection']->id);
         if ($linkExternalData) {
             $linkExternalData->delete();
         }
+    }
+
+   /**
+     * Print out the external data on the public items show page.
+     */
+    public function hookPublicItemsShow()
+    {
+        echo get_view()->linkExternalData(get_current_record('item'));
     }
 }
