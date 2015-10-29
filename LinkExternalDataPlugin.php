@@ -83,15 +83,15 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
             echo '<div class="two columns alpha"><label for="per_page">Type de collection</label></div>';
             echo '<div class="inputs five columns omega">';
             echo '<div class="input-block">';
-            $startLocal = '<p><input type= "radio" name="hasExternalData" value="false"';
-            $startImpor = '<p><input type= "radio" name="hasExternalData" value="true"';
+            $startLocal = '<p><input type= "radio" id="hasNoExternalData" name="hasExternalData" value="false"';
+            $startImpor = '<p><input type= "radio" id="hasExternalData"   name="hasExternalData" value="true"';
             $endLocal = '> Collection Locale (valeur par défaut)</p>';
             $endImpor = '> Collection Importée </p>';
             echo $startLocal . $centrLocal . $endLocal;
             echo $startImpor . $centrImpor . $endImpor;
         echo'</div></div>';
 
-        echo '<div class="field">';
+        echo '<div class="field hide" id="urlExternalDataTextInput">';
             echo '<div class="two columns alpha"><label for="per_page">URL si collection importée</label></div>';
 
             $default_url = (!$linkExternalData || strlen($linkExternalData->urlExternalData) == 0) ? 'http://archive.org' : $linkExternalData->urlExternalData;
