@@ -104,6 +104,30 @@ class LinkExternalData_View_Helper_LinkExternalData extends Zend_View_Helper_Abs
                         }                    
                     }
                     break;
+                    case "http://gallica.bnf.fr" : {              
+                        $toBePrinted = '';      
+                        /*BnF collection harvested from OAI-PMH harvester*/                    
+                        //1. look for http://gallica.bnf.fr/ark:/12148  in ID                    
+                        $p = stripos($ID,"gallica.bnf.fr/ark");
+                            if (!$p) {
+                               $toBePrinted .= '<div>Link to image & thumbnail cannot be found</div>';
+                                ;/*warning should be added here, nothing will be displayed*/
+                            } else {
+                               $link_found = true;
+                               $image_found = true;
+                               //2. 
+                               $vignetteBnF = $ID.'.thumbnail';                                
+                            }
+                            $found = $image_found && $link_found;
+                            if ($found) {
+                                $link_to = $ID;
+                                $img_src = $vignetteBnF;
+                                $alt_image_comment = '"Visiter le document sur gallica.bnf.fr"';
+                                $comment_after_thumbnail = 'BnF';
+                            }                         
+                        }                    
+                    break;
+
                     case "" : {
                         echo '<div>???Actually has no urlExternalData???</div>';
                     }

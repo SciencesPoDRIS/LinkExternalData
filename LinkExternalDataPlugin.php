@@ -94,11 +94,26 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         echo '<div class="field hide" id="urlExternalDataTextInput">';
             echo '<div class="two columns alpha"><label for="per_page">URL si collection importée</label></div>';
 
-            $default_url = (!$linkExternalData || strlen($linkExternalData->urlExternalData) == 0) ? 'http://archive.org' : $linkExternalData->urlExternalData;
+            $default_url = (!$linkExternalData || strlen($linkExternalData->urlExternalData) == 0) ? 
+                'http://archive.org' : 
+                $linkExternalData->urlExternalData;
+            $default_url_linktoItem = (!$linkExternalData || strlen($linkExternalData->urlExternalDatal_linktoItem) == 0) ? 
+                'http://archive.org' : 
+                $linkExternalData->urlExternalDatal_linktoItem;
+            $default_url_linktoThumbnail = (!$linkExternalData || strlen($linkExternalData->urlExternalData_linktoThumbnail) == 0) ? 
+                'http://archive.org' : 
+                $linkExternalData->urlExternalData_linktoThumbnail;
             
-            echo '<input type="text" class="textinput" size="45" name="urlExternalData" value="' . $default_url . '" id="urlExternalData" />';
-                
-            echo '</div>';            
+            echo '<input  type="text" class="textinput" size="45" name="urlExternalData" list="urlExternalData_List"  id="urlExternalData">
+                <datalist id="urlExternalData_List">
+              <option value="http://gallica.bnf.fr">
+              <option value="http://bibnum.prive.bulac.fr">
+              <option value="http://archive.org">
+            </datalist>';
+
+
+            echo '</div>';         
+
         echo '</div>';     
     }
 
@@ -155,6 +170,8 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
                 $linkExternalData->collection_id = $collection_id;           
                 $linkExternalData->hasExternalData = FALSE;
                 $linkExternalData->urlExternalData = '';
+                $linkExternalData->urlExternalDatal_linktoItem = '';
+                $linkExternalData->urlExternalData_linktoThumbnail = '';
                 $linkExternalData->name = metadata($collectionObj, array('Dublin Core', 'Title'));            
                 $linkExternalData->save();
             }
@@ -164,6 +181,7 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         $linkExternalData->name = metadata($args['record'], array('Dublin Core', 'Title'));
         $linkExternalData->hasExternalData = get_option('hasExternalData');
         $linkExternalData->urlExternalData = get_option('urlExternalData');
+
         $linkExternalData->save();
     }
 
