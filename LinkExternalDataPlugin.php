@@ -94,17 +94,13 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         echo '<div class="field hide" id="urlExternalDataTextInput">';
             echo '<div class="two columns alpha"><label for="per_page">URL si collection importée</label></div>';
 
-            $default_url = (!$linkExternalData || strlen($linkExternalData->urlExternalData) == 0) ? 
-                'http://archive.org' : 
+            $default_url = (!$linkExternalData || ($linkExternalData->hasExternalData == false) || strlen($linkExternalData->urlExternalData) == 0) ? 
+                '' : 
                 $linkExternalData->urlExternalData;
-            $default_url_linktoItem = (!$linkExternalData || strlen($linkExternalData->urlExternalDatal_linktoItem) == 0) ? 
-                'http://archive.org' : 
-                $linkExternalData->urlExternalDatal_linktoItem;
-            $default_url_linktoThumbnail = (!$linkExternalData || strlen($linkExternalData->urlExternalData_linktoThumbnail) == 0) ? 
-                'http://archive.org' : 
-                $linkExternalData->urlExternalData_linktoThumbnail;
-            
-            echo '<input  type="text" class="textinput" size="45" name="urlExternalData" list="urlExternalData_List"  id="urlExternalData">
+             
+            echo '<input  type="text" class="textinput" size="45" name="urlExternalData" list="urlExternalData_List" 
+            value="'. $default_url .'"
+             id="urlExternalData">
                 <datalist id="urlExternalData_List">
               <option value="http://gallica.bnf.fr">
               <option value="http://bibnum.prive.bulac.fr">
