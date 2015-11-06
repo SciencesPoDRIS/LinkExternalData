@@ -58,7 +58,7 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
     /****************Uninstall the plugin**************************************/
     public function hookUninstall()
     {
-        $sql = "DROP TABLE IF EXISTS {$this->_db->LinkExternalData}";
+        $sql = "DROP TABLE IF EXISTS `{$this->_db->LinkExternalData}`";
         $this->_db->query($sql);
     }
 
