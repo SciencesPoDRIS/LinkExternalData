@@ -16,7 +16,9 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
         'admin_collections_form',
         'before_save_collection',
         'after_save_collection',
-        'public_items_show'
+        'after_ delete_collection',
+        'public_items_show',
+        'admin_head'
      );
     
     /**
@@ -56,7 +58,7 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
     /****************Uninstall the plugin**************************************/
     public function hookUninstall()
     {
-        $sql = "DROP TABLE IF EXISTS {$this->_db->LinkExternalData}";
+        $sql = "DROP TABLE IF EXISTS `{$this->_db->LinkExternalData}`";
         $this->_db->query($sql);
     }
 
@@ -203,5 +205,16 @@ class LinkExternalDataPlugin extends Omeka_Plugin_AbstractPlugin
     public function hookPublicItemsShow()
     {
         echo get_view()->linkExternalData(get_current_record('item'));
+    }
+
+    /**
+     * Configure admin theme header.
+     *
+     * @param array $args
+     */
+    public function hookAdminHead()
+    {
+        queue_css_file('link-external-data');
+        queue_js_file('link-external-data');
     }
 }
